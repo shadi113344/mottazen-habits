@@ -10,24 +10,37 @@
 <style>
   :root{
     --bg:#f5f5f7;
+    --bg-grad-top:#f8fafc;
     --card:rgba(255,255,255,.9);
     --card2:#fff;
     --text:#111827;
     --muted:#6b7280;
     --line:rgba(17,24,39,.10);
     --accent:#111827;
+    --accent-contrast:#fff;
     --green:#22c55e;
     --green-soft:rgba(34,197,94,.12);
     --orange:#f97316;
     --soft:rgba(17,24,39,.06);
     --shadow:0 12px 28px rgba(0,0,0,.08);
+    --input-bg:#f8fafc;
+    --menu-bg:var(--card2);
+    --menu-shadow:var(--shadow);
+    --error-bg:#fee2e2;
+    --error-color:#991b1b;
+    --error-border:#ef4444;
+    --toast-bg:rgba(34,197,94,.12);
+    --toast-color:#065f46;
+    --streak-bg:rgba(249,115,22,.12);
+    --danger-text:#dc2626;
+    --danger-ghost:#dc2626;
   }
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;width:100%;min-height:100%;overflow-x:hidden}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Arial,sans-serif;
-    background:linear-gradient(180deg,#f8fafc 0%,var(--bg) 100%);
+    background:linear-gradient(180deg,var(--bg-grad-top) 0%,var(--bg) 100%);
     color:var(--text);
     -webkit-text-size-adjust:100%;
   }
@@ -44,9 +57,9 @@
   #authScreen ~ main .hint-bar{
     display:none;
   }
-  #authScreen:not(.hidden) ~ main .floating,
-  #authScreen:not(.hidden) ~ main .hint-bar{
-    display:none !important;
+  #appMain[style*="display:none"] ~ .floating,
+  #appMain[style*="display: none"] ~ .floating {
+    display: none !important;
   }
   .auth-card{
     width:100%;max-width:380px;
@@ -62,7 +75,7 @@
   .auth-card .auth-field{display:grid;gap:6px;margin:0 0 12px;text-align:left}
   .auth-card .auth-field label{font-size:11px;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.04em}
   .auth-card .auth-field input{
-    width:100%;border:1px solid var(--line);background:#f8fafc;color:var(--text);
+    width:100%;border:1px solid var(--line);background:var(--input-bg);color:var(--text);
     border-radius:14px;padding:12px 14px;font-size:16px;outline:none;
   }
   .auth-card .auth-field input:focus{border-color:var(--accent)}
@@ -72,7 +85,7 @@
     margin-top:8px;transition:opacity .15s;
   }
   .auth-btn:active{opacity:.8}
-  .auth-btn.primary{background:var(--accent);color:#fff}
+  .auth-btn.primary{background:var(--accent);color:var(--accent-contrast)}
   .auth-btn.google{
     background:var(--card);border:1px solid var(--line);color:var(--text);
     display:flex;align-items:center;justify-content:center;gap:10px;
@@ -239,12 +252,14 @@
   .day .dow{font-size:10px;line-height:1;color:var(--muted);font-weight:850}
   .day .num{margin-top:3px;font-size:17px;line-height:1;font-weight:950;letter-spacing:0}
   .day.is-today:not(.active){box-shadow:inset 0 0 0 1.5px var(--accent)}
-  .day.active{background:var(--accent);color:#fff;box-shadow:0 10px 20px rgba(17,24,39,.18)}
+  .day.active{background:var(--accent);color:var(--accent-contrast);box-shadow:0 10px 20px rgba(17,24,39,.18)}
   .day.active .dow{color:rgba(255,255,255,.7)}
 
   .view-switch{margin:0 0 10px}
 
-  .habit-list{display:grid;gap:10px}
+  .habit-list-outer{display:grid;gap:14px}
+  .habit-list{display:grid;gap:10px;grid-template-columns:1fr}
+  .habit-list:not(.compact){grid-template-columns:repeat(auto-fill, minmax(280px, 1fr))}
   .habit-list.compact{gap:6px}
 
   .habit-card{
@@ -281,7 +296,7 @@
   .streak-badge{
     display:inline-flex;align-items:center;gap:3px;
     margin-left:8px;padding:2px 7px;border-radius:999px;
-    background:rgba(249,115,22,.12);color:var(--orange);
+    background:var(--streak-bg);color:var(--orange);
     font-size:11px;font-weight:900;letter-spacing:0;
     flex:0 0 auto;
   }
@@ -292,13 +307,13 @@
   .circle-box{
     width:34px;height:34px;border-radius:50%;
     border:1.5px solid var(--line);
-    background:rgba(255,255,255,.76);
+    background:var(--card);
     display:grid;place-items:center;
     transition:160ms ease;
   }
   .circle-box:after{
     content:"\2713";
-    color:#fff;
+    color:var(--accent-contrast);
     font-size:19px;
     font-weight:950;
     line-height:1;
@@ -347,7 +362,7 @@
   .small-actions{display:flex;justify-content:flex-end;gap:4px}
   .ghost{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:850;padding:2px 8px;cursor:pointer;border-radius:8px}
   .ghost:hover{background:var(--soft)}
-  .ghost.danger{color:#dc2626}
+  .ghost.danger{color:var(--danger-text)}
 
   .compact .habit-card{border-radius:16px;padding:8px 10px;gap:0}
   .compact .habit-card.numeric{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}
@@ -413,7 +428,7 @@
     border-radius:50%;
     width:56px;height:56px;
     background:var(--accent);
-    color:#fff;
+    color:var(--accent-contrast);
     font-size:31px;
     line-height:0;
     box-shadow:0 18px 35px rgba(17,24,39,.22);
@@ -446,12 +461,12 @@
   .field{display:grid;gap:7px;margin:11px 0}
   label{font-size:12px;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.04em}
   input,select{
-    width:100%;border:1px solid var(--line);background:#f8fafc;color:var(--text);
+    width:100%;border:1px solid var(--line);background:var(--input-bg);color:var(--text);
     border-radius:15px;padding:12px 13px;font-size:16px;min-height:46px;outline:none;
   }
   input:focus,select:focus{border-color:var(--accent)}
   textarea{
-    width:100%;border:1px solid var(--line);background:#f8fafc;color:var(--text);
+    width:100%;border:1px solid var(--line);background:var(--input-bg);color:var(--text);
     border-radius:15px;padding:12px 13px;font-size:16px;outline:none;font-family:inherit;
     min-height:80px;resize:vertical;
   }
@@ -459,8 +474,8 @@
   .modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}
   .modal-actions button{border:0;border-radius:15px;padding:13px;font-weight:900;cursor:pointer;font-size:15px}
   .cancel{background:var(--soft);color:var(--text)}
-  .save{background:var(--accent);color:#fff}
-  .save.danger{background:#dc2626}
+  .save{background:var(--accent);color:var(--accent-contrast)}
+  .save.danger{background:var(--danger-text)}
 
   #errorBox, #toastBox{
     display:none;
@@ -470,8 +485,8 @@
     font-size:13px;
     font-weight:700;
   }
-  #errorBox{border:1px solid #ef4444;color:#991b1b;background:#fee2e2}
-  #toastBox{border:1px solid var(--green);color:#065f46;background:rgba(34,197,94,.12)}
+  #errorBox{border:1px solid var(--error-border);color:var(--error-color);background:var(--error-bg)}
+  #toastBox{border:1px solid var(--green);color:var(--toast-color);background:var(--toast-bg)}
 
   /* ============ MENU DROPDOWN ============ */
   .menu-wrap{position:relative}
@@ -501,7 +516,7 @@
     background:var(--card2);
     border:1px solid var(--line);
     border-radius:16px;
-    box-shadow:0 18px 45px rgba(0,0,0,.18);
+    box-shadow:var(--menu-shadow);
     padding:8px;
     z-index:25;
     display:none;
@@ -735,7 +750,7 @@
   .notes-textarea{
     width:100%;
     border:1px solid var(--line);
-    background:rgba(255,255,255,.6);
+    background:var(--card);
     color:var(--text);
     border-radius:14px;
     padding:11px 12px;
@@ -856,7 +871,6 @@
     .ring-content strong{font-size:26px}
     .hero h2{font-size:22px}
     .hero p{font-size:14px}
-    .habit-list:not(.compact){grid-template-columns:repeat(2,minmax(0,1fr))}
     .floating{max-width:720px;padding:0 22px}
     .bars{height:120px}
     .day{flex:0 0 50px;width:50px;min-height:58px}
@@ -884,8 +898,6 @@
       margin:0 0 12px;font-size:14px;color:var(--muted);
       font-weight:900;text-transform:uppercase;letter-spacing:.04em;
     }
-    .habit-list:not(.compact){grid-template-columns:repeat(3,minmax(0,1fr))}
-    .habit-list.compact{grid-template-columns:repeat(1,minmax(0,1fr))}
     .bars{height:140px}
     /* Floating add button repositions to bottom right corner */
     .floating{
@@ -906,7 +918,6 @@
   @media (min-width:1400px){
     .app{max-width:1340px}
     .desktop-grid{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:32px}
-    .habit-list:not(.compact){grid-template-columns:repeat(3,minmax(0,1fr))}
   }
 
   /* ============ SMALL PHONES (<= 360px) ============ */
@@ -922,47 +933,66 @@
     .icon-btn{padding:7px 9px;font-size:11px}
   }
 
-  /* ============ DARK MODE ============ */
+  /* ============ DARK MODE (manual toggle via class) ============ */
+  html.dark-mode {
+    --bg:#050506;
+    --bg-grad-top:#111113;
+    --card:rgba(28,28,30,.92);
+    --card2:#1c1c1e;
+    --text:#f9fafb;
+    --muted:#a1a1aa;
+    --line:rgba(255,255,255,.10);
+    --accent:#f9fafb;
+    --accent-contrast:#111827;
+    --green:#4ade80;
+    --green-soft:rgba(74,222,128,.10);
+    --orange:#fb923c;
+    --soft:rgba(255,255,255,.07);
+    --shadow:0 18px 45px rgba(0,0,0,.25);
+    --input-bg:#111113;
+    --menu-bg:#1c1c1e;
+    --menu-shadow:0 18px 45px rgba(0,0,0,.45);
+    --error-bg:#451a1a;
+    --error-color:#fecaca;
+    --error-border:#991b1b;
+    --toast-bg:rgba(74,222,128,.12);
+    --toast-color:#bbf7d0;
+    --streak-bg:rgba(251,146,60,.15);
+    --danger-text:#f87171;
+    --danger-ghost:#f87171;
+    color-scheme:dark;
+  }
+
+  /* ============ DARK MODE (system preference) ============ */
   @media (prefers-color-scheme:dark){
     :root{
       --bg:#050506;
+      --bg-grad-top:#111113;
       --card:rgba(28,28,30,.92);
       --card2:#1c1c1e;
       --text:#f9fafb;
       --muted:#a1a1aa;
       --line:rgba(255,255,255,.10);
       --accent:#f9fafb;
+      --accent-contrast:#111827;
       --green:#4ade80;
       --green-soft:rgba(74,222,128,.10);
       --orange:#fb923c;
       --soft:rgba(255,255,255,.07);
       --shadow:0 18px 45px rgba(0,0,0,.25);
+      --input-bg:#111113;
+      --menu-bg:#1c1c1e;
+      --menu-shadow:0 18px 45px rgba(0,0,0,.45);
+      --error-bg:#451a1a;
+      --error-color:#fecaca;
+      --error-border:#991b1b;
+      --toast-bg:rgba(74,222,128,.12);
+      --toast-color:#bbf7d0;
+      --streak-bg:rgba(251,146,60,.15);
+      --danger-text:#f87171;
+      --danger-ghost:#f87171;
+      color-scheme:dark;
     }
-    body{background:linear-gradient(180deg,#111113 0%,#050506 100%);color-scheme:dark}
-    .day.active{color:#111827}
-    .day.active .dow{color:rgba(17,24,39,.65)}
-    .circle-box,.value-panel{background:rgba(28,28,30,.95)}
-    .circle-input:checked + .circle-box{background:#f9fafb;border-color:#f9fafb}
-    .circle-input:checked + .circle-box:after{color:#111827}
-    .add{color:#111827}
-    input,select{background:#111113}
-    #errorBox{background:#451a1a;color:#fecaca;border-color:#991b1b}
-    #toastBox{background:rgba(74,222,128,.12);color:#bbf7d0}
-    .streak-badge{background:rgba(251,146,60,.15)}
-    .ghost.danger{color:#f87171}
-    .save.danger{background:#dc2626}
-    .menu-pop{background:#1c1c1e;box-shadow:0 18px 45px rgba(0,0,0,.45)}
-    .cal-cell.active{color:#111827}
-    .notes-textarea{background:rgba(28,28,30,.6)}
-    .heatmap-cell.l1{background:rgba(74,222,128,.18)}
-    .heatmap-cell.l2{background:rgba(74,222,128,.4)}
-    .heatmap-cell.l3{background:rgba(74,222,128,.65)}
-    .heatmap-cell.l4{background:var(--green)}
-    .habit-card.skipped.has-progress{background:var(--card)}
-    .auth-card{background:#1c1c1e;border-color:rgba(255,255,255,.1)}
-    .auth-card .auth-field input{background:#111113}
-    .auth-btn.google{background:#111113;border-color:rgba(255,255,255,.1)}
-    textarea{background:#111113}
   }
 </style>
 </head>
@@ -1346,15 +1376,17 @@ var currentUser = null;
   // ========== THEME TOGGLE ==========
   var themeToggleBtn = document.getElementById("themeToggleBtn");
   var themeIcon = themeToggleBtn.querySelector(".theme-icon");
-  var isDarkMode = localStorage.getItem("mottazen_dark_mode") === "true" || window.matchMedia("(prefers-color-scheme: dark)").matches;
+  var isDarkMode = localStorage.getItem("mottazen_dark_mode") === "true";
 
   function applyTheme(dark){
     isDarkMode = dark;
     if(dark){
       document.documentElement.style.colorScheme = "dark";
+      document.documentElement.classList.add("dark-mode");
       themeIcon.textContent = "☀️";
     } else {
       document.documentElement.style.colorScheme = "light";
+      document.documentElement.classList.remove("dark-mode");
       themeIcon.textContent = "🌙";
     }
     localStorage.setItem("mottazen_dark_mode", dark ? "true" : "false");
@@ -1364,7 +1396,7 @@ var currentUser = null;
     applyTheme(!isDarkMode);
   };
 
-  // Apply saved or system theme on load
+  // Apply saved theme on load
   applyTheme(isDarkMode);
 })();
 
@@ -2099,7 +2131,7 @@ function initApp(){
     function renderHabits(){
       var list = document.getElementById("habitList");
       list.innerHTML = "";
-      list.className = "habit-list"; // outer container — categories live inside
+      list.className = "habit-list-outer"; // outer container — no grid columns here
       if(!state.habits.length){ list.innerHTML = '<div class="empty">No habits yet. Tap + to add one.</div>'; return; }
 
       var groups = groupHabitsByCategory();
