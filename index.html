@@ -99,6 +99,15 @@
     font-size:11px;font-weight:700;cursor:pointer;
   }
   .user-bar .logout-btn:hover{background:var(--card2);color:var(--text)}
+  .theme-toggle-btn{
+    border:1px solid var(--line);background:var(--card);
+    color:var(--text);border-radius:999px;padding:6px 8px;
+    font-size:13px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    min-width:32px;height:32px;
+  }
+  .theme-toggle-btn:hover{background:var(--card2)}
+  .theme-icon{display:inline-block}
 
   /* ============ MOBILE (default) ============ */
   .app{
@@ -982,6 +991,9 @@
 <main class="app" id="appMain" style="display:none">
   <div class="user-bar" id="userBar">
     <span class="user-name" id="userName"></span>
+    <button class="theme-toggle-btn" id="themeToggleBtn" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">
+      <span class="theme-icon">🌙</span>
+    </button>
     <button class="logout-btn" id="logoutBtn" type="button">Sign out</button>
   </div>
   <header>
@@ -1321,6 +1333,30 @@ var currentUser = null;
     appMain.style.display = "none";
     setAuthMode(false);
   };
+
+  // ========== THEME TOGGLE ==========
+  var themeToggleBtn = document.getElementById("themeToggleBtn");
+  var themeIcon = themeToggleBtn.querySelector(".theme-icon");
+  var isDarkMode = localStorage.getItem("mottazen_dark_mode") === "true" || window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+  function applyTheme(dark){
+    isDarkMode = dark;
+    if(dark){
+      document.documentElement.style.colorScheme = "dark";
+      themeIcon.textContent = "☀️";
+    } else {
+      document.documentElement.style.colorScheme = "light";
+      themeIcon.textContent = "🌙";
+    }
+    localStorage.setItem("mottazen_dark_mode", dark ? "true" : "false");
+  }
+
+  themeToggleBtn.onclick = function(){
+    applyTheme(!isDarkMode);
+  };
+
+  // Apply saved or system theme on load
+  applyTheme(isDarkMode);
 })();
 
 // ========== MAIN APP ==========
