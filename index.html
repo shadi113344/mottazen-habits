@@ -455,11 +455,6 @@
   .chart-wrap svg{width:100%;height:auto;display:block;overflow:visible}
   .chart-caption{margin-top:8px;font-size:11px;color:var(--muted);font-weight:750;text-align:center}
   .chart-empty{padding:20px 12px;font-size:13px;color:var(--muted);text-align:center;border:1px dashed var(--line);border-radius:14px;margin-top:10px}
-  .chart-grid{stroke:var(--line);stroke-width:1}
-  .chart-axis-label{font-size:9px;fill:var(--muted);font-weight:750}
-  .chart-line{fill:none;stroke:var(--green);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-  .chart-area{fill:var(--green-soft)}
-  .chart-dot{fill:var(--green);stroke:var(--card);stroke-width:1.5}
   .chart-radar-grid{fill:none;stroke:var(--line);stroke-width:1}
   .chart-radar-axis{stroke:var(--line);stroke-width:1}
   .chart-radar-fill{fill:var(--green-soft);stroke:var(--green);stroke-width:2;stroke-linejoin:round}
@@ -1215,11 +1210,6 @@
       </div>
 
       <div class="analysis-view" id="overviewView">
-        <div class="metric-card">
-          <div class="metric-title">All habits — 30-day trend</div>
-          <div class="chart-wrap" id="overviewTrendChart"></div>
-          <div class="chart-caption" id="overviewTrendCaption"></div>
-        </div>
         <div class="metric-card">
           <div class="metric-title">This week — habit balance</div>
           <div class="chart-wrap" id="overviewRadarChart"></div>
@@ -2501,12 +2491,6 @@ function initApp(){
       else if(analysisTab === "habits") renderHabitsView();
     }
 
-    function dateRangeKeys(endKey, count){
-      var a = [];
-      for(var i = -(count - 1); i <= 0; i++) a.push(addDays(endKey, i));
-      return a;
-    }
-
     function habitWeeklyPct(h, keys){
       var total = 0, counted = 0;
       for(var i = 0; i < keys.length; i++){
@@ -2516,58 +2500,6 @@ function initApp(){
         counted++;
       }
       return counted ? Math.round(total / counted * 100) : 0;
-    }
-
-    function renderOverviewTrendChart(keys, scores){
-      var el = document.getElementById("overviewTrendChart");
-      var cap = document.getElementById("overviewTrendCaption");
-      if(!el) return;
-      if(!state.habits.length){
-        el.innerHTML = '<div class="chart-empty">Add habits to see your overall trend.</div>';
-        if(cap) cap.textContent = "";
-        return;
-      }
-      var w = 320, h = 148;
-      var pad = {l: 30, r: 10, t: 14, b: 26};
-      var innerW = w - pad.l - pad.r;
-      var innerH = h - pad.t - pad.b;
-      var n = scores.length;
-      var pts = [];
-      for(var i = 0; i < n; i++){
-        var x = pad.l + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
-        var y = pad.t + innerH - (Math.max(0, Math.min(100, scores[i])) / 100) * innerH;
-        pts.push({x: x, y: y});
-      }
-      var lineD = pts.map(function(p, idx){ return (idx === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" ");
-      var areaD = lineD + " L" + pts[pts.length - 1].x.toFixed(1) + " " + (pad.t + innerH).toFixed(1)
-        + " L" + pts[0].x.toFixed(1) + " " + (pad.t + innerH).toFixed(1) + " Z";
-      var grid = "";
-      [0, 50, 100].forEach(function(pct){
-        var gy = pad.t + innerH - (pct / 100) * innerH;
-        grid += '<line class="chart-grid" x1="'+pad.l+'" y1="'+gy.toFixed(1)+'" x2="'+(w-pad.r)+'" y2="'+gy.toFixed(1)+'"/>';
-        grid += '<text class="chart-axis-label" x="'+(pad.l-6)+'" y="'+(gy+3).toFixed(1)+'" text-anchor="end">'+pct+'</text>';
-      });
-      var dots = pts.map(function(p){
-        return '<circle class="chart-dot" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.5"/>';
-      }).join("");
-      var xLabels = "";
-      if(n >= 2){
-        var idxs = [0, Math.floor((n - 1) / 2), n - 1];
-        for(var li = 0; li < idxs.length; li++){
-          var ix = idxs[li];
-          var d = new Date(keys[ix] + "T12:00:00");
-          xLabels += '<text class="chart-axis-label" x="'+pts[ix].x.toFixed(1)+'" y="'+(h-6)+'" text-anchor="middle">'
-            + d.toLocaleDateString(undefined, {month:"short", day:"numeric"}) + '</text>';
-        }
-      }
-      el.innerHTML = '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="30-day overall completion trend">'
-        + grid + '<path class="chart-area" d="'+areaD+'"/><path class="chart-line" d="'+lineD+'"/>' + dots + xLabels + '</svg>';
-      if(cap){
-        var sum = 0;
-        for(var si = 0; si < scores.length; si++) sum += scores[si];
-        var avg30 = scores.length ? Math.round(sum / scores.length) : 0;
-        cap.textContent = "Daily average across all habits · " + avg30 + "% over 30 days";
-      }
     }
 
     function renderOverviewRadarChart(keys){
@@ -2629,10 +2561,6 @@ function initApp(){
 
     function renderOverview(){
       var keys = weekKeys();
-      var trendKeys30 = dateRangeKeys(selectedDate, 30);
-      var trendScores = [];
-      for(var ti = 0; ti < trendKeys30.length; ti++) trendScores.push(dayScore(trendKeys30[ti]));
-      renderOverviewTrendChart(trendKeys30, trendScores);
       renderOverviewRadarChart(keys);
 
       var scores = [];
