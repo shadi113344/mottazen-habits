@@ -423,7 +423,8 @@
   .progress{height:6px;border-radius:999px;background:var(--soft);overflow:hidden;margin-top:7px}
   .progress span{display:block;height:100%;background:var(--accent);border-radius:inherit}
 
-  .habit-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
+  .habit-actions{display:none;align-items:center;gap:2px;flex-shrink:0}
+  #appMain.edit-mode-on .habit-actions{display:flex}
   .habit-act-btn{
     border:0;background:transparent;color:var(--muted);
     width:30px;height:30px;border-radius:8px;cursor:pointer;
@@ -1148,6 +1149,7 @@
           <div class="menu-section">
             <div class="menu-section-title">View</div>
             <button class="menu-item" type="button" data-action="toggle-view" role="menuitem" id="viewModeMenuItem">Compact view</button>
+            <button class="menu-item" type="button" data-action="toggle-edit-mode" role="menuitem" id="editModeMenuItem">Show edit buttons</button>
           </div>
           <div class="menu-divider"></div>
           <div class="menu-section">
@@ -1578,6 +1580,7 @@ function initApp(){
     var notesDebounce = null;
     var skipNextNotesBlur = false;
     var viewMode = localStorage.getItem("habit_log_view_mode") || "cards";
+    var editMode = localStorage.getItem("habit_edit_mode") !== "false";
     var editingHabitId = null;
 
     // ========== Local cache (fallback) ==========
@@ -2156,8 +2159,11 @@ function initApp(){
 
     function renderViews(){
       var item = document.getElementById("viewModeMenuItem");
-      if(!item) return;
-      item.textContent = viewMode === "cards" ? "Compact view" : "Cards view";
+      if(item) item.textContent = viewMode === "cards" ? "Compact view" : "Cards view";
+      var app = document.getElementById("appMain");
+      if(app) app.classList.toggle("edit-mode-on", editMode);
+      var editItem = document.getElementById("editModeMenuItem");
+      if(editItem) editItem.textContent = editMode ? "Hide edit buttons" : "Show edit buttons";
     }
 
     function streakBadgeHtml(h){
@@ -3664,6 +3670,11 @@ function initApp(){
         viewMode = viewMode === "cards" ? "compact" : "cards";
         try{localStorage.setItem("habit_log_view_mode",viewMode);}catch(e){}
         render();
+      }
+      else if(action === "toggle-edit-mode"){
+        editMode = !editMode;
+        try{localStorage.setItem("habit_edit_mode", editMode ? "true" : "false");}catch(e){}
+        renderViews();
       }
       else if(action === "export-json") exportJSON();
       else if(action === "export-csv") exportCSV();
