@@ -52,6 +52,7 @@
     --text-on-accent-muted:rgba(255,255,255,.7);
     --fab-shadow:0 10px 22px rgba(17,24,39,.18);
     --note-shadow:0 14px 28px rgba(0,0,0,.08);
+    --ring-size:84px;
     color-scheme:light;
   }
 
@@ -140,15 +141,23 @@
     font-size:11px;font-weight:700;cursor:pointer;
   }
   .user-bar .logout-btn:hover{background:var(--card2);color:var(--text)}
-  .theme-toggle-btn{
+  .user-bar-tools{
+    display:flex;align-items:center;gap:6px;flex-shrink:0;
+  }
+  .icon-tool-btn,
+  .theme-toggle-btn,
+  .view-toggle-btn{
     border:1px solid var(--line);background:var(--card);
     color:var(--text);border-radius:999px;padding:6px 8px;
     font-size:13px;font-weight:700;cursor:pointer;
     display:flex;align-items:center;justify-content:center;
     min-width:32px;height:32px;
   }
-  .theme-toggle-btn:hover{background:var(--card2)}
+  .icon-tool-btn:hover,
+  .theme-toggle-btn:hover,
+  .view-toggle-btn:hover{background:var(--card2)}
   .theme-icon{display:inline-block}
+  .view-toggle-btn svg{display:block}
 
   /* ============ MOBILE (default) ============ */
   .app{
@@ -201,16 +210,53 @@
     box-shadow:var(--shadow);
     margin-bottom:12px;
   }
-  .score-row{display:grid;grid-template-columns:84px minmax(0,1fr);gap:13px;align-items:center}
+  .score-row{
+    display:grid;
+    grid-template-columns:var(--ring-size) minmax(0,1fr);
+    gap:13px;
+    align-items:center;
+  }
+  .ring-wrap{
+    width:var(--ring-size);
+    height:var(--ring-size);
+    flex-shrink:0;
+    align-self:center;
+    position:relative;
+  }
   .ring{
-    width:84px;height:84px;border-radius:50%;
-    display:grid;place-items:center;position:relative;
+    width:100%;
+    height:100%;
+    aspect-ratio:1;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    position:relative;
     background:conic-gradient(var(--accent) calc(var(--score,0)*1%), var(--soft) 0);
   }
-  .ring:before{content:"";position:absolute;inset:8px;border-radius:50%;background:var(--card2)}
-  .ring-content{position:relative;text-align:center}
-  .ring-content strong{display:block;font-size:23px;letter-spacing:0}
-  .ring-content span{display:block;margin-top:-2px;font-size:10px;color:var(--muted);font-weight:900}
+  .ring:before{content:"";position:absolute;inset:10%;border-radius:50%;background:var(--card2)}
+  .ring-content{
+    position:relative;
+    z-index:1;
+    text-align:center;
+    line-height:1.05;
+    width:72%;
+    max-width:72%;
+  }
+  .ring-content strong{
+    display:block;
+    font-size:20px;
+    letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+  .ring-content span{
+    display:block;
+    margin-top:1px;
+    font-size:9px;
+    letter-spacing:.06em;
+    color:var(--muted);
+    font-weight:900;
+  }
   .hero h2{margin:0;font-size:20px;line-height:1.05;letter-spacing:0}
   .hero p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.3}
 
@@ -274,8 +320,6 @@
   .day.is-today:not(.active){box-shadow:inset 0 0 0 1.5px var(--accent)}
   .day.active{background:var(--accent);color:var(--accent-contrast);box-shadow:var(--shadow-day-active)}
   .day.active .dow{color:var(--text-on-accent-muted)}
-
-  .view-switch{margin:0 0 10px}
 
   .habit-list-outer{display:grid;gap:14px}
   .habit-list{display:grid;gap:10px;grid-template-columns:1fr}
@@ -894,9 +938,10 @@
   @media (min-width:720px){
     .app{max-width:720px;padding:24px 22px calc(108px + env(safe-area-inset-bottom))}
     h1{font-size:48px}
-    .ring{width:96px;height:96px}
-    .score-row{grid-template-columns:96px minmax(0,1fr);gap:18px}
-    .ring-content strong{font-size:26px}
+    :root{--ring-size:96px}
+    .score-row{gap:18px}
+    .ring-content strong{font-size:22px}
+    .ring-content span{font-size:10px}
     .hero h2{font-size:22px}
     .hero p{font-size:14px}
     .bars{height:120px}
@@ -950,8 +995,8 @@
     .app{padding-left:10px;padding-right:10px}
     .date-wrap{margin-left:-10px;margin-right:-10px;padding-left:10px;padding-right:10px}
     h1{font-size:38px}
-    .score-row{grid-template-columns:78px minmax(0,1fr)}
-    .ring{width:78px;height:78px}
+    :root{--ring-size:78px}
+    .ring-content strong{font-size:18px}
     .hero h2{font-size:18px}
     .hero p{font-size:12px}
     .icon-btn{padding:7px 9px;font-size:11px}
@@ -1068,10 +1113,23 @@
 <main class="app" id="appMain" style="display:none">
   <div class="user-bar" id="userBar">
     <span class="user-name" id="userName"></span>
-    <button class="theme-toggle-btn" id="themeToggleBtn" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">
-      <span class="theme-icon">🌙</span>
-    </button>
-    <button class="logout-btn" id="logoutBtn" type="button">Sign out</button>
+    <div class="user-bar-tools">
+      <button class="view-toggle-btn" id="viewToggleBtn" type="button" title="Switch to compact view" aria-label="Switch to compact view">
+        <svg class="view-icon-cards" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <rect x="2" y="2" width="5" height="5" rx="1.2"/>
+          <rect x="9" y="2" width="5" height="5" rx="1.2"/>
+          <rect x="2" y="9" width="5" height="5" rx="1.2"/>
+          <rect x="9" y="9" width="5" height="5" rx="1.2"/>
+        </svg>
+        <svg class="view-icon-compact" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" style="display:none">
+          <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="theme-toggle-btn" id="themeToggleBtn" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">
+        <span class="theme-icon">🌙</span>
+      </button>
+      <button class="logout-btn" id="logoutBtn" type="button">Sign out</button>
+    </div>
   </div>
   <header>
     <div class="header-left">
@@ -1109,8 +1167,10 @@
 
   <section class="hero">
     <div class="score-row">
-      <div class="ring" id="scoreRing" style="--score:0">
-        <div class="ring-content"><strong id="scoreNumber">0%</strong><span>DONE</span></div>
+      <div class="ring-wrap">
+        <div class="ring" id="scoreRing" style="--score:0">
+          <div class="ring-content"><strong id="scoreNumber">0%</strong><span>DONE</span></div>
+        </div>
       </div>
       <div>
         <h2 id="heroTitle">Clean start.</h2>
@@ -1128,10 +1188,6 @@
     <section class="section active" id="logSection">
       <h2 class="section-title">Log</h2>
       <div class="date-wrap" id="dateScroll"><div class="dates" id="dateStrip"></div></div>
-      <div class="seg view-switch">
-        <button class="active" id="cardsBtn" type="button">Cards</button>
-        <button id="compactBtn" type="button">Compact</button>
-      </div>
       <div class="habit-list" id="habitList"></div>
       <div class="notes-card">
         <div class="notes-card-title">
@@ -2032,8 +2088,13 @@ function initApp(){
     }
 
     function renderViews(){
-      document.getElementById("cardsBtn").classList.toggle("active",viewMode==="cards");
-      document.getElementById("compactBtn").classList.toggle("active",viewMode==="compact");
+      var btn = document.getElementById("viewToggleBtn");
+      if(!btn) return;
+      var cards = viewMode === "cards";
+      btn.querySelector(".view-icon-cards").style.display = cards ? "" : "none";
+      btn.querySelector(".view-icon-compact").style.display = cards ? "none" : "";
+      btn.title = cards ? "Switch to compact view" : "Switch to cards view";
+      btn.setAttribute("aria-label", btn.title);
     }
 
     function streakBadgeHtml(h){
@@ -2703,8 +2764,11 @@ function initApp(){
       })(analysisTabBtns[atb]);
     }
 
-    document.getElementById("cardsBtn").onclick=function(){viewMode="cards";try{localStorage.setItem("habit_log_view_mode",viewMode);}catch(e){} render();};
-    document.getElementById("compactBtn").onclick=function(){viewMode="compact";try{localStorage.setItem("habit_log_view_mode",viewMode);}catch(e){} render();};
+    document.getElementById("viewToggleBtn").onclick=function(){
+      viewMode = viewMode === "cards" ? "compact" : "cards";
+      try{localStorage.setItem("habit_log_view_mode",viewMode);}catch(e){}
+      render();
+    };
 
     // ========== Notes for the day ==========
     var notesArea = document.getElementById("notesArea");
