@@ -396,10 +396,11 @@
 
   .floating{
     position:fixed;
-    right:14px;
+    right:max(14px, env(safe-area-inset-right, 0px));
     left:auto;
-    bottom:calc(14px + env(safe-area-inset-bottom));
+    bottom:calc(14px + env(safe-area-inset-bottom, 0px));
     width:auto;
+    max-width:calc(100vw - 28px);
     display:flex;
     flex-direction:column;
     align-items:flex-end;
@@ -426,17 +427,21 @@
     pointer-events:auto;
     border:0;
     border-radius:50%;
-    width:48px;height:48px;
+    width:44px;height:44px;
     background:var(--accent);
     color:var(--accent-contrast);
-    font-size:26px;
+    font-size:24px;
     line-height:0;
-    box-shadow:0 12px 28px rgba(17,24,39,.22);
+    box-shadow:0 10px 22px rgba(17,24,39,.18);
     cursor:pointer;
-    opacity:0.7;
+    opacity:0.4;
+    transform:scale(1);
     transition:opacity .2s ease, transform .15s ease;
   }
-  .add:hover,.add:active{opacity:1;transform:scale(1.08)}
+  @media (hover:hover) and (pointer:fine){
+    .add:hover{opacity:1;transform:scale(1.08)}
+  }
+  .add:active,.add:focus-visible{opacity:1;transform:scale(1.08)}
 
   .modal-backdrop{
     position:fixed;
@@ -903,8 +908,9 @@
     .bars{height:140px}
     /* Floating add button — slightly more padding on desktop */
     .floating{
-      right:32px;
-      bottom:32px;
+      right:max(32px, env(safe-area-inset-right, 0px));
+      left:auto;
+      bottom:calc(32px + env(safe-area-inset-bottom, 0px));
     }
     .note{font-size:13px;padding:14px 18px}
     /* Date strip can fit more days inline */
