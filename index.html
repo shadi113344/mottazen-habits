@@ -423,15 +423,22 @@
   .progress{height:6px;border-radius:999px;background:var(--soft);overflow:hidden;margin-top:7px}
   .progress span{display:block;height:100%;background:var(--accent);border-radius:inherit}
 
-  .small-actions{display:flex;justify-content:flex-end;gap:4px}
-  .ghost{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:850;padding:2px 8px;cursor:pointer;border-radius:8px}
-  .ghost:hover{background:var(--soft)}
-  .ghost.danger{color:var(--danger-text)}
+  .habit-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
+  .habit-act-btn{
+    border:0;background:transparent;color:var(--muted);
+    width:30px;height:30px;border-radius:8px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;padding:0;
+  }
+  .habit-act-btn:hover{background:var(--soft);color:var(--text)}
+  .habit-act-btn.delete-btn:hover{color:var(--danger-text);background:rgba(239,68,68,.08)}
+  .habit-act-btn svg{width:15px;height:15px;display:block}
 
   .compact .habit-card{border-radius:16px;padding:8px 10px;gap:0}
   .compact .habit-card.numeric{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}
   .compact .habit-card.numeric .number-box{grid-column:2;grid-row:1}
-  .compact .habit-sub,.compact .progress,.compact .small-actions{display:none}
+  .compact .habit-sub,.compact .progress{display:none}
+  .compact .habit-act-btn{width:26px;height:26px}
+  .compact .habit-act-btn svg{width:13px;height:13px}
   .compact .habit-name{font-size:15px;font-weight:850}
   .compact .streak-badge{padding:1px 5px;font-size:10px}
   .compact .circle-wrap,.compact .circle-box{width:30px;height:30px}
@@ -2189,6 +2196,43 @@ function initApp(){
       return ordered;
     }
 
+    function habitActionsHtml(){
+      return '<div class="habit-actions">' +
+        '<button class="habit-act-btn edit-btn" type="button" aria-label="Edit habit" title="Edit habit">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>' +
+        '</button>' +
+        '<button class="habit-act-btn delete-btn" type="button" aria-label="Delete habit" title="Delete habit">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M5 6v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6"/></svg>' +
+        '</button>' +
+      '</div>';
+    }
+
+    function wireHabitCardActions(card, h){
+      card.querySelector(".edit-btn").onclick = function(e){
+        e.stopPropagation();
+        openEditModal(h);
+      };
+      card.querySelector(".delete-btn").onclick = function(e){
+        e.stopPropagation();
+        confirmDialog('Delete "'+h.name+'"? This will remove all its history.', "Delete").then(function(ok){
+          if(!ok) return;
+          var habitLogs = {};
+          for(var kk in state.logs){
+            if(state.logs.hasOwnProperty(kk) && state.logs[kk][h.id]){
+              habitLogs[kk] = state.logs[kk][h.id];
+            }
+          }
+          state.lastDeleted = { habit: h, logs: habitLogs, timestamp: Date.now() };
+          state.habits = state.habits.filter(function(x){ return x.id !== h.id; });
+          for(var kk in state.logs){
+            if(state.logs.hasOwnProperty(kk)) delete state.logs[kk][h.id];
+          }
+          save(); render();
+          showUndoToast('Deleted "'+h.name+'"', h.id);
+        });
+      };
+    }
+
     function buildHabitCard(h){
       var v = logVal(selectedDate, h.id);
       var skipped = v === -1;
@@ -2202,6 +2246,7 @@ function initApp(){
       var skipPillHtml = skipped ? '<span class="skip-pill">Skipped</span>' : '';
       var reminderHtml = h.reminder ? '<span class="reminder-icon" title="'+escapeHtml(h.reminder)+'">💭</span>' : '';
       var dragHandle = '<span class="drag-handle" aria-label="Drag to reorder" title="Drag to reorder"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>';
+      var actionsHtml = habitActionsHtml();
 
       if(h.type==="check"){
         var subText = skipped ? "Marked as rest" : (v ? "Completed" : "Not logged yet");
@@ -2209,9 +2254,10 @@ function initApp(){
           '<div class="habit-top">' +
             dragHandle +
             '<div class="habit-title"><div class="habit-name"><span class="dot"></span>'+escapeHtml(h.name)+reminderHtml+streakHtml+skipPillHtml+'</div><div class="habit-sub">'+subText+'</div></div>' +
+            actionsHtml +
             '<button class="skip-btn'+(skipped?' active':'')+'" type="button" aria-label="Toggle skip / rest day" title="Mark as rest day">\u2298</button>' +
             '<label class="circle-wrap" aria-label="Toggle '+escapeHtml(h.name)+'"><input class="circle-input" type="checkbox" '+(v===1?'checked':'')+'><span class="circle-box"></span></label>' +
-          '</div><div class="small-actions"><button class="ghost edit-btn" type="button">Edit</button><button class="ghost danger delete-btn" type="button">Delete</button></div>';
+          '</div>';
         var input = card.querySelector(".circle-input");
         input.onchange = function(e){
           // If currently skipped, checking should unskip and mark done
@@ -2236,10 +2282,10 @@ function initApp(){
           '<div class="habit-top">' +
             dragHandle +
             '<div class="habit-title"><div class="habit-name"><span class="dot"></span>'+escapeHtml(h.name)+reminderHtml+streakHtml+skipPillHtml+'</div><div class="habit-sub">'+subInfo+'</div></div>' +
+            actionsHtml +
             '<button class="skip-btn'+(skipped?' active':'')+'" type="button" aria-label="Toggle skip / rest day" title="Mark as rest day">\u2298</button>' +
           '</div>' +
-          '<div class="number-box"><button class="round-btn minus" type="button" aria-label="Decrease">&minus;</button><div class="value-panel" role="button" tabindex="0" aria-label="Set value directly"><strong>'+displayVal+'</strong> <small>/ '+max+'</small><div class="progress"><span style="width:'+pct+'%"></span></div></div><button class="round-btn plus" type="button" aria-label="Increase">+</button></div>' +
-          '<div class="small-actions"><button class="ghost edit-btn" type="button">Edit</button><button class="ghost danger delete-btn" type="button">Delete</button></div>';
+          '<div class="number-box"><button class="round-btn minus" type="button" aria-label="Decrease">&minus;</button><div class="value-panel" role="button" tabindex="0" aria-label="Set value directly"><strong>'+displayVal+'</strong> <small>/ '+max+'</small><div class="progress"><span style="width:'+pct+'%"></span></div></div><button class="round-btn plus" type="button" aria-label="Increase">+</button></div>';
 
         card.querySelector(".minus").onclick = function(){
           if(skipped){ return; }
@@ -2271,28 +2317,7 @@ function initApp(){
         }
       };
 
-      card.querySelector(".edit-btn").onclick = function(){ openEditModal(h); };
-      card.querySelector(".delete-btn").onclick = function(){
-        confirmDialog('Delete "'+h.name+'"? This will remove all its history.', "Delete").then(function(ok){
-          if(!ok) return;
-          // Stash the habit and its logs for 30s undo window
-          var habitLogs = {};
-          for(var kk in state.logs){
-            if(state.logs.hasOwnProperty(kk) && state.logs[kk][h.id]){
-              habitLogs[kk] = state.logs[kk][h.id];
-            }
-          }
-          state.lastDeleted = { habit: h, logs: habitLogs, timestamp: Date.now() };
-          
-          // Remove from active list
-          state.habits = state.habits.filter(function(x){ return x.id !== h.id; });
-          for(var kk in state.logs){
-            if(state.logs.hasOwnProperty(kk)) delete state.logs[kk][h.id];
-          }
-          save(); render();
-          showUndoToast('Deleted "'+h.name+'"', h.id);
-        });
-      };
+      wireHabitCardActions(card, h);
 
       // ===== Drag & drop reorder =====
       attachDragHandlers(card, h);
