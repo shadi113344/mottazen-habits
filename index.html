@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+(function(){
+  try{
+    var s=localStorage.getItem("mottazen_dark_mode");
+    var h=document.documentElement;
+    if(s==="true") h.classList.add("dark-mode");
+    else if(s==="false") h.classList.add("light-mode");
+  }catch(_){}
+})();
+</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -34,6 +44,15 @@
     --streak-bg:rgba(249,115,22,.12);
     --danger-text:#dc2626;
     --danger-ghost:#dc2626;
+    --panel-raised:rgba(255,255,255,.78);
+    --overlay:rgba(15,23,42,.34);
+    --shadow-seg-active:0 8px 18px rgba(0,0,0,.06);
+    --shadow-day-active:0 10px 20px rgba(17,24,39,.18);
+    --text-on-accent:#fff;
+    --text-on-accent-muted:rgba(255,255,255,.7);
+    --fab-shadow:0 10px 22px rgba(17,24,39,.18);
+    --note-shadow:0 14px 28px rgba(0,0,0,.08);
+    color-scheme:light;
   }
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -104,7 +123,8 @@
   .auth-toggle a:hover{text-decoration:underline}
   .auth-error{
     margin:10px 0 0;padding:10px 12px;border-radius:12px;
-    background:rgba(239,68,68,.08);color:#dc2626;
+    background:var(--error-bg);color:var(--error-color);
+    border:1px solid var(--error-border);
     font-size:13px;font-weight:600;display:none;
   }
   .auth-error.show{display:block}
@@ -213,7 +233,7 @@
     font-weight:900;
     cursor:pointer;
   }
-  .seg button.active{background:var(--card2);color:var(--text);box-shadow:0 8px 18px rgba(0,0,0,.06)}
+  .seg button.active{background:var(--card2);color:var(--text);box-shadow:var(--shadow-seg-active)}
 
   .section{display:none}
   .section.active{display:block}
@@ -252,8 +272,8 @@
   .day .dow{font-size:10px;line-height:1;color:var(--muted);font-weight:850}
   .day .num{margin-top:3px;font-size:17px;line-height:1;font-weight:950;letter-spacing:0}
   .day.is-today:not(.active){box-shadow:inset 0 0 0 1.5px var(--accent)}
-  .day.active{background:var(--accent);color:var(--accent-contrast);box-shadow:0 10px 20px rgba(17,24,39,.18)}
-  .day.active .dow{color:rgba(255,255,255,.7)}
+  .day.active{background:var(--accent);color:var(--accent-contrast);box-shadow:var(--shadow-day-active)}
+  .day.active .dow{color:var(--text-on-accent-muted)}
 
   .view-switch{margin:0 0 10px}
 
@@ -347,7 +367,7 @@
   }
   .value-panel{
     border:1px solid var(--line);
-    background:rgba(255,255,255,.78);
+    background:var(--panel-raised);
     border-radius:16px;
     text-align:center;
     padding:8px 9px;
@@ -420,7 +440,7 @@
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    box-shadow:0 14px 28px rgba(0,0,0,.08);
+    box-shadow:var(--note-shadow);
     max-width:260px;
   }
   .add{
@@ -432,7 +452,7 @@
     color:var(--accent-contrast);
     font-size:24px;
     line-height:0;
-    box-shadow:0 10px 22px rgba(17,24,39,.18);
+    box-shadow:var(--fab-shadow);
     cursor:pointer;
     opacity:0.4;
     transform:scale(1);
@@ -446,7 +466,7 @@
   .modal-backdrop{
     position:fixed;
     inset:0;
-    background:rgba(15,23,42,.34);
+    background:var(--overlay);
     display:none;
     z-index:30;
     padding:18px 12px;
@@ -602,7 +622,7 @@
   .cal-cell.muted{color:var(--muted);opacity:.35}
   .cal-cell:hover:not(.empty){background:var(--soft)}
   .cal-cell.is-today{border-color:var(--accent)}
-  .cal-cell.active{background:var(--accent);color:#fff}
+  .cal-cell.active{background:var(--accent);color:var(--text-on-accent)}
   .cal-cell.active.is-today{border-color:var(--accent)}
   .cal-cell .dot-mark{
     position:absolute;
@@ -610,7 +630,7 @@
     width:4px;height:4px;border-radius:50%;
     background:var(--green);
   }
-  .cal-cell.active .dot-mark{background:#fff}
+  .cal-cell.active .dot-mark{background:var(--text-on-accent)}
   .cal-cell.empty{cursor:default;pointer-events:none}
   .cal-cell:disabled{cursor:not-allowed;opacity:.25}
 
@@ -937,8 +957,8 @@
     .icon-btn{padding:7px 9px;font-size:11px}
   }
 
-  /* ============ DARK MODE (manual toggle via class) ============ */
-  html.dark-mode {
+  /* ============ DARK MODE (shared tokens) ============ */
+  html.dark-mode{
     --bg:#050506;
     --bg-grad-top:#111113;
     --card:rgba(28,28,30,.92);
@@ -964,12 +984,18 @@
     --streak-bg:rgba(251,146,60,.15);
     --danger-text:#f87171;
     --danger-ghost:#f87171;
+    --panel-raised:rgba(255,255,255,.08);
+    --overlay:rgba(0,0,0,.58);
+    --shadow-seg-active:0 8px 18px rgba(0,0,0,.22);
+    --shadow-day-active:0 10px 20px rgba(0,0,0,.35);
+    --text-on-accent:#111827;
+    --text-on-accent-muted:rgba(17,24,39,.65);
+    --fab-shadow:0 10px 22px rgba(0,0,0,.4);
+    --note-shadow:0 14px 28px rgba(0,0,0,.28);
     color-scheme:dark;
   }
-
-  /* ============ DARK MODE (system preference) ============ */
   @media (prefers-color-scheme:dark){
-    :root{
+    html:not(.light-mode):not(.dark-mode){
       --bg:#050506;
       --bg-grad-top:#111113;
       --card:rgba(28,28,30,.92);
@@ -995,6 +1021,14 @@
       --streak-bg:rgba(251,146,60,.15);
       --danger-text:#f87171;
       --danger-ghost:#f87171;
+      --panel-raised:rgba(255,255,255,.08);
+      --overlay:rgba(0,0,0,.58);
+      --shadow-seg-active:0 8px 18px rgba(0,0,0,.22);
+      --shadow-day-active:0 10px 20px rgba(0,0,0,.35);
+      --text-on-accent:#111827;
+      --text-on-accent-muted:rgba(17,24,39,.65);
+      --fab-shadow:0 10px 22px rgba(0,0,0,.4);
+      --note-shadow:0 14px 28px rgba(0,0,0,.28);
       color-scheme:dark;
     }
   }
@@ -1378,30 +1412,49 @@ var currentUser = null;
   };
 
   // ========== THEME TOGGLE ==========
+  var THEME_KEY = "mottazen_dark_mode";
   var themeToggleBtn = document.getElementById("themeToggleBtn");
   var themeIcon = themeToggleBtn.querySelector(".theme-icon");
-  var isDarkMode = localStorage.getItem("mottazen_dark_mode") === "true";
+  var themeMq = window.matchMedia("(prefers-color-scheme: dark)");
+
+  function isDarkActive(){
+    var root = document.documentElement;
+    if(root.classList.contains("dark-mode")) return true;
+    if(root.classList.contains("light-mode")) return false;
+    return themeMq.matches;
+  }
+
+  function updateThemeUI(){
+    var dark = isDarkActive();
+    document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    themeIcon.textContent = dark ? "☀️" : "🌙";
+    themeToggleBtn.title = dark ? "Switch to light mode" : "Switch to dark mode";
+    themeToggleBtn.setAttribute("aria-label", themeToggleBtn.title);
+  }
 
   function applyTheme(dark){
-    isDarkMode = dark;
-    if(dark){
-      document.documentElement.style.colorScheme = "dark";
-      document.documentElement.classList.add("dark-mode");
-      themeIcon.textContent = "☀️";
-    } else {
-      document.documentElement.style.colorScheme = "light";
-      document.documentElement.classList.remove("dark-mode");
-      themeIcon.textContent = "🌙";
-    }
-    localStorage.setItem("mottazen_dark_mode", dark ? "true" : "false");
+    var root = document.documentElement;
+    root.classList.remove("light-mode", "dark-mode");
+    root.classList.add(dark ? "dark-mode" : "light-mode");
+    localStorage.setItem(THEME_KEY, dark ? "true" : "false");
+    updateThemeUI();
   }
 
   themeToggleBtn.onclick = function(){
-    applyTheme(!isDarkMode);
+    applyTheme(!isDarkActive());
   };
 
-  // Apply saved theme on load
-  applyTheme(isDarkMode);
+  themeMq.addEventListener("change", function(){
+    var root = document.documentElement;
+    if(!root.classList.contains("light-mode") && !root.classList.contains("dark-mode")){
+      updateThemeUI();
+    }
+  });
+
+  var storedTheme = localStorage.getItem(THEME_KEY);
+  if(storedTheme === "true") applyTheme(true);
+  else if(storedTheme === "false") applyTheme(false);
+  else updateThemeUI();
 })();
 
 // ========== MAIN APP ==========
