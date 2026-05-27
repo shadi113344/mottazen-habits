@@ -451,6 +451,20 @@
   .bar-wrap{height:100%;display:grid;gap:6px;align-items:end;justify-items:center}
   .bar{width:100%;min-height:5px;border-radius:999px;background:var(--accent)}
   .bar-label{font-size:10px;color:var(--muted);font-weight:850}
+  .chart-wrap{width:100%;margin-top:10px}
+  .chart-wrap svg{width:100%;height:auto;display:block;overflow:visible}
+  .chart-caption{margin-top:8px;font-size:11px;color:var(--muted);font-weight:750;text-align:center}
+  .chart-empty{padding:20px 12px;font-size:13px;color:var(--muted);text-align:center;border:1px dashed var(--line);border-radius:14px;margin-top:10px}
+  .chart-grid{stroke:var(--line);stroke-width:1}
+  .chart-axis-label{font-size:9px;fill:var(--muted);font-weight:750}
+  .chart-line{fill:none;stroke:var(--green);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+  .chart-area{fill:var(--green-soft)}
+  .chart-dot{fill:var(--green);stroke:var(--card);stroke-width:1.5}
+  .chart-radar-grid{fill:none;stroke:var(--line);stroke-width:1}
+  .chart-radar-axis{stroke:var(--line);stroke-width:1}
+  .chart-radar-fill{fill:var(--green-soft);stroke:var(--green);stroke-width:2;stroke-linejoin:round}
+  .chart-radar-dot{fill:var(--green);stroke:var(--card);stroke-width:1.5}
+  .chart-radar-label{font-size:9px;fill:var(--muted);font-weight:750}
   .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
   .row:last-child{border-bottom:0}
   .row span{font-size:13px;color:var(--muted);font-weight:750}
@@ -1201,6 +1215,16 @@
       </div>
 
       <div class="analysis-view" id="overviewView">
+        <div class="metric-card">
+          <div class="metric-title">All habits — 30-day trend</div>
+          <div class="chart-wrap" id="overviewTrendChart"></div>
+          <div class="chart-caption" id="overviewTrendCaption"></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">This week — habit balance</div>
+          <div class="chart-wrap" id="overviewRadarChart"></div>
+          <div class="chart-caption" id="overviewRadarCaption"></div>
+        </div>
         <div class="metric-card">
           <div class="metric-title">Selected 7-day window</div>
           <div class="metric-value" id="weeklyAverage">0%</div>
@@ -2477,8 +2501,140 @@ function initApp(){
       else if(analysisTab === "habits") renderHabitsView();
     }
 
+    function dateRangeKeys(endKey, count){
+      var a = [];
+      for(var i = -(count - 1); i <= 0; i++) a.push(addDays(endKey, i));
+      return a;
+    }
+
+    function habitWeeklyPct(h, keys){
+      var total = 0, counted = 0;
+      for(var i = 0; i < keys.length; i++){
+        var sc = scoreHabit(h, logVal(keys[i], h.id));
+        if(sc === null) continue;
+        total += sc;
+        counted++;
+      }
+      return counted ? Math.round(total / counted * 100) : 0;
+    }
+
+    function renderOverviewTrendChart(keys, scores){
+      var el = document.getElementById("overviewTrendChart");
+      var cap = document.getElementById("overviewTrendCaption");
+      if(!el) return;
+      if(!state.habits.length){
+        el.innerHTML = '<div class="chart-empty">Add habits to see your overall trend.</div>';
+        if(cap) cap.textContent = "";
+        return;
+      }
+      var w = 320, h = 148;
+      var pad = {l: 30, r: 10, t: 14, b: 26};
+      var innerW = w - pad.l - pad.r;
+      var innerH = h - pad.t - pad.b;
+      var n = scores.length;
+      var pts = [];
+      for(var i = 0; i < n; i++){
+        var x = pad.l + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+        var y = pad.t + innerH - (Math.max(0, Math.min(100, scores[i])) / 100) * innerH;
+        pts.push({x: x, y: y});
+      }
+      var lineD = pts.map(function(p, idx){ return (idx === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" ");
+      var areaD = lineD + " L" + pts[pts.length - 1].x.toFixed(1) + " " + (pad.t + innerH).toFixed(1)
+        + " L" + pts[0].x.toFixed(1) + " " + (pad.t + innerH).toFixed(1) + " Z";
+      var grid = "";
+      [0, 50, 100].forEach(function(pct){
+        var gy = pad.t + innerH - (pct / 100) * innerH;
+        grid += '<line class="chart-grid" x1="'+pad.l+'" y1="'+gy.toFixed(1)+'" x2="'+(w-pad.r)+'" y2="'+gy.toFixed(1)+'"/>';
+        grid += '<text class="chart-axis-label" x="'+(pad.l-6)+'" y="'+(gy+3).toFixed(1)+'" text-anchor="end">'+pct+'</text>';
+      });
+      var dots = pts.map(function(p){
+        return '<circle class="chart-dot" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.5"/>';
+      }).join("");
+      var xLabels = "";
+      if(n >= 2){
+        var idxs = [0, Math.floor((n - 1) / 2), n - 1];
+        for(var li = 0; li < idxs.length; li++){
+          var ix = idxs[li];
+          var d = new Date(keys[ix] + "T12:00:00");
+          xLabels += '<text class="chart-axis-label" x="'+pts[ix].x.toFixed(1)+'" y="'+(h-6)+'" text-anchor="middle">'
+            + d.toLocaleDateString(undefined, {month:"short", day:"numeric"}) + '</text>';
+        }
+      }
+      el.innerHTML = '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="30-day overall completion trend">'
+        + grid + '<path class="chart-area" d="'+areaD+'"/><path class="chart-line" d="'+lineD+'"/>' + dots + xLabels + '</svg>';
+      if(cap){
+        var sum = 0;
+        for(var si = 0; si < scores.length; si++) sum += scores[si];
+        var avg30 = scores.length ? Math.round(sum / scores.length) : 0;
+        cap.textContent = "Daily average across all habits · " + avg30 + "% over 30 days";
+      }
+    }
+
+    function renderOverviewRadarChart(keys){
+      var el = document.getElementById("overviewRadarChart");
+      var cap = document.getElementById("overviewRadarCaption");
+      if(!el) return;
+      var habits = state.habits;
+      if(habits.length < 3){
+        el.innerHTML = '<div class="chart-empty">Add at least 3 habits to see the balance chart.</div>';
+        if(cap) cap.textContent = habits.length ? "Showing per-habit stats in the breakdown below." : "";
+        return;
+      }
+      var labels = [];
+      var values = [];
+      for(var hi = 0; hi < habits.length; hi++){
+        labels.push(habits[hi].name);
+        values.push(habitWeeklyPct(habits[hi], keys));
+      }
+      var w = 320, h = 260;
+      var cx = w / 2, cy = h / 2 + 6;
+      var R = Math.min(88, 36 + habits.length * 4);
+      var n = labels.length;
+      var rings = [25, 50, 75, 100];
+      var chunks = ['<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Weekly habit balance radar chart">'];
+      for(var ri = 0; ri < rings.length; ri++){
+        var rr = (rings[ri] / 100) * R;
+        var ringPts = [];
+        for(var ai = 0; ai < n; ai++){
+          var ang = -Math.PI / 2 + (ai / n) * Math.PI * 2;
+          ringPts.push((cx + Math.cos(ang) * rr).toFixed(1) + "," + (cy + Math.sin(ang) * rr).toFixed(1));
+        }
+        chunks.push('<polygon class="chart-radar-grid" points="'+ringPts.join(" ")+'"/>');
+      }
+      var dataPts = [];
+      var labelEls = [];
+      for(var di = 0; di < n; di++){
+        var angle = -Math.PI / 2 + (di / n) * Math.PI * 2;
+        var ax = cx + Math.cos(angle) * R;
+        var ay = cy + Math.sin(angle) * R;
+        chunks.push('<line class="chart-radar-axis" x1="'+cx+'" y1="'+cy+'" x2="'+ax.toFixed(1)+'" y2="'+ay.toFixed(1)+'"/>');
+        var valR = (values[di] / 100) * R;
+        dataPts.push((cx + Math.cos(angle) * valR).toFixed(1) + "," + (cy + Math.sin(angle) * valR).toFixed(1));
+        var lx = cx + Math.cos(angle) * (R + 18);
+        var ly = cy + Math.sin(angle) * (R + 18);
+        var anchor = Math.abs(Math.cos(angle)) < 0.25 ? "middle" : (Math.cos(angle) > 0 ? "start" : "end");
+        var short = labels[di].length > 10 ? labels[di].slice(0, 9) + "\u2026" : labels[di];
+        labelEls.push('<text class="chart-radar-label" x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="'+anchor+'">'+escapeHtml(short)+"</text>");
+      }
+      chunks.push('<polygon class="chart-radar-fill" points="'+dataPts.join(" ")+'"/>');
+      for(var pi = 0; pi < dataPts.length; pi++){
+        var pt = dataPts[pi].split(",");
+        chunks.push('<circle class="chart-radar-dot" cx="'+pt[0]+'" cy="'+pt[1]+'" r="3.5"/>');
+      }
+      chunks = chunks.concat(labelEls);
+      chunks.push("</svg>");
+      el.innerHTML = chunks.join("");
+      if(cap) cap.textContent = "Each spoke is one habit · distance from center = this week\u2019s completion %";
+    }
+
     function renderOverview(){
       var keys = weekKeys();
+      var trendKeys30 = dateRangeKeys(selectedDate, 30);
+      var trendScores = [];
+      for(var ti = 0; ti < trendKeys30.length; ti++) trendScores.push(dayScore(trendKeys30[ti]));
+      renderOverviewTrendChart(trendKeys30, trendScores);
+      renderOverviewRadarChart(keys);
+
       var scores = [];
       for(var i=0; i<keys.length; i++) scores.push(dayScore(keys[i]));
       var sum = 0;
