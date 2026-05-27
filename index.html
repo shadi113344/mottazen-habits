@@ -1553,6 +1553,10 @@ function initApp(){
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
       return d.toISOString().slice(0,10);
     }
+    function normalizeDateKey(d){
+      if(!d) return "";
+      return String(d).slice(0, 10);
+    }
     function addDays(k,n){var d=new Date(k+"T12:00:00");d.setDate(d.getDate()+n);return key(d);}
     function pretty(k){return new Date(k+"T12:00:00").toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});}
     function escapeHtml(s){
@@ -1565,6 +1569,7 @@ function initApp(){
     var todayKey = key(new Date());
     var notesEditingDate = selectedDate;
     var notesDebounce = null;
+    var skipNextNotesBlur = false;
     var viewMode = localStorage.getItem("habit_log_view_mode") || "cards";
     var editingHabitId = null;
 
@@ -1626,8 +1631,11 @@ function initApp(){
         if(nRes.error) throw nRes.error;
         state.notes = {};
         (nRes.data || []).forEach(function(r){
-          if(r.content) state.notes[r.note_date] = r.content;
+          if(!r.content) return;
+          var nk = normalizeDateKey(r.note_date);
+          if(nk) state.notes[nk] = r.content;
         });
+        state.notes = normalizeNotesMap(state.notes);
 
         // Load settings
         var sRes = await sb.from("user_settings").select("*").eq("id", currentUser.id).single();
@@ -1714,14 +1722,16 @@ function initApp(){
         // Sync notes (upsert non-empty, delete cleared)
         for(var nk in state.notes){
           if(!state.notes.hasOwnProperty(nk)) continue;
+          var noteDate = normalizeDateKey(nk);
+          if(!noteDate) continue;
           var noteBody = (state.notes[nk] || "").trim();
           if(!noteBody){
-            await sb.from("notes").delete().eq("user_id", currentUser.id).eq("note_date", nk);
+            await sb.from("notes").delete().eq("user_id", currentUser.id).eq("note_date", noteDate);
             continue;
           }
           await sb.from("notes").upsert({
             user_id: currentUser.id,
-            note_date: nk,
+            note_date: noteDate,
             content: state.notes[nk]
           }, {onConflict: "user_id,note_date"});
         }
@@ -1751,10 +1761,21 @@ function initApp(){
     // ========== Initial load ==========
     // Only load cache if it belongs to this user
     var cached = getLocal(CACHE_KEY);
+    function normalizeNotesMap(notes){
+      var out = {};
+      if(!notes) return out;
+      for(var nk in notes){
+        if(!Object.prototype.hasOwnProperty.call(notes, nk)) continue;
+        var dk = normalizeDateKey(nk);
+        if(dk && notes[nk]) out[dk] = notes[nk];
+      }
+      return out;
+    }
+
     if(cached && Array.isArray(cached.habits)){
       state = cached;
       state.logs = state.logs || {};
-      state.notes = state.notes || {};
+      state.notes = normalizeNotesMap(state.notes);
       state.categoryOrder = state.categoryOrder || ["Health","Mind","Work","Movement","Sleep","Spirit","Other"];
       state.collapsedCategories = state.collapsedCategories || {};
       state.lastDeleted = null;
@@ -2037,6 +2058,9 @@ function initApp(){
         b.setAttribute("data-key",k);
         b.setAttribute("aria-label", d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric"}));
         b.innerHTML='<div><div class="dow">'+d.toLocaleDateString(undefined,{weekday:"short"}).slice(0,3)+'</div><div class="num">'+d.getDate()+'</div></div>';
+        b.onmousedown=function(){
+          flushPendingNotes();
+        };
         b.onclick=function(e){
           // Guard: if a drag just happened, suppress this click
           if(this.parentNode.parentNode.classList.contains("dragging") || dragSuppressClick){
@@ -2924,6 +2948,8 @@ function initApp(){
     var notesDayLabel = document.getElementById("notesDayLabel");
 
     function commitNoteForDate(dateKey, text){
+      dateKey = normalizeDateKey(dateKey);
+      if(!dateKey) return;
       state.notes = state.notes || {};
       if((text || "").trim()){
         state.notes[dateKey] = text;
@@ -2932,44 +2958,58 @@ function initApp(){
       }
     }
 
+    function noteForDate(dateKey){
+      dateKey = normalizeDateKey(dateKey);
+      return (state.notes && state.notes[dateKey]) || "";
+    }
+
+    function updateNotesDayLabel(){
+      if(!notesDayLabel) return;
+      var dk = normalizeDateKey(selectedDate);
+      var d = new Date(dk + "T12:00:00");
+      var dayLabel = dk === todayKey
+        ? "today"
+        : d.toLocaleDateString(undefined, {weekday:"short", month:"short", day:"numeric"});
+      notesDayLabel.textContent = "Notes for " + dayLabel;
+    }
+
     function flushPendingNotes(){
       clearTimeout(notesDebounce);
       notesDebounce = null;
       if(!notesArea) return;
-      commitNoteForDate(notesEditingDate, notesArea.value);
+      var dateKey = normalizeDateKey(notesEditingDate);
+      if(!dateKey) return;
+      commitNoteForDate(dateKey, notesArea.value);
       save();
     }
 
+    function loadNotesIntoEditor(dateKey){
+      if(!notesArea) return;
+      dateKey = normalizeDateKey(dateKey);
+      notesEditingDate = dateKey;
+      skipNextNotesBlur = true;
+      notesArea.value = noteForDate(dateKey);
+      updateNotesDayLabel();
+    }
+
     function changeSelectedDate(k){
+      k = normalizeDateKey(k);
       if(!k || k === selectedDate) return;
       flushPendingNotes();
       selectedDate = k;
-      notesEditingDate = k;
+      loadNotesIntoEditor(k);
       renderHero();
       renderHabits();
       renderAnalysis();
-      renderNotes(true);
     }
 
-    function renderNotes(force){
-      if(!notesArea) return;
-      notesEditingDate = selectedDate;
-      var text = (state.notes && state.notes[selectedDate]) || "";
-      if(force || document.activeElement !== notesArea){
-        notesArea.value = text;
-      }
-      if(notesDayLabel){
-        var d = new Date(selectedDate + "T12:00:00");
-        var dayLabel = selectedDate === todayKey
-          ? "today"
-          : d.toLocaleDateString(undefined, {weekday:"short", month:"short", day:"numeric"});
-        notesDayLabel.textContent = "Notes for " + dayLabel;
-      }
+    function renderNotes(){
+      loadNotesIntoEditor(selectedDate);
     }
 
     notesArea.addEventListener("input", function(){
       var text = notesArea.value;
-      var dateKey = notesEditingDate;
+      var dateKey = normalizeDateKey(notesEditingDate);
       clearTimeout(notesDebounce);
       notesDebounce = setTimeout(function(){
         commitNoteForDate(dateKey, text);
@@ -2979,6 +3019,11 @@ function initApp(){
       }, 350);
     });
     notesArea.addEventListener("blur", function(){
+      if(skipNextNotesBlur){
+        skipNextNotesBlur = false;
+        return;
+      }
+      if(normalizeDateKey(notesEditingDate) !== normalizeDateKey(selectedDate)) return;
       flushPendingNotes();
     });
 
@@ -3671,6 +3716,9 @@ function initApp(){
       }
       btn.innerHTML = String(dayNum) + (hasLog ? '<span class="dot-mark"></span>' : '');
       btn.setAttribute("aria-label", new Date(k + "T12:00:00").toLocaleDateString(undefined, {weekday:"long",day:"numeric",month:"long",year:"numeric"}));
+      btn.onmousedown = function(){
+        flushPendingNotes();
+      };
       btn.onclick = function(){
         changeSelectedDate(k);
         var strip = document.getElementById("dateStrip");
