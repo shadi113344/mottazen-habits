@@ -460,6 +460,15 @@
   .chart-radar-fill{fill:var(--green-soft);stroke:var(--green);stroke-width:2;stroke-linejoin:round}
   .chart-radar-dot{fill:var(--green);stroke:var(--card);stroke-width:1.5}
   .chart-radar-label{font-size:9px;fill:var(--muted);font-weight:750}
+  .chart-range-seg{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:3px;
+    padding:3px;border-radius:12px;background:var(--soft);margin-top:10px;
+  }
+  .chart-range-seg button{
+    border:0;border-radius:9px;background:transparent;color:var(--muted);
+    padding:7px 4px;font-size:11px;font-weight:900;cursor:pointer;
+  }
+  .chart-range-seg button.active{background:var(--card2);color:var(--text);box-shadow:var(--shadow-seg-active)}
   .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
   .row:last-child{border-bottom:0}
   .row span{font-size:13px;color:var(--muted);font-weight:750}
@@ -1211,7 +1220,13 @@
 
       <div class="analysis-view" id="overviewView">
         <div class="metric-card">
-          <div class="metric-title">This week — habit balance</div>
+          <div class="metric-title">Habit balance</div>
+          <div class="seg chart-range-seg" id="radarRangeSeg">
+            <button type="button" data-radar-range="day">Day</button>
+            <button type="button" data-radar-range="week" class="active">Week</button>
+            <button type="button" data-radar-range="month">Month</button>
+            <button type="button" data-radar-range="all">All</button>
+          </div>
           <div class="chart-wrap" id="overviewRadarChart"></div>
           <div class="chart-caption" id="overviewRadarCaption"></div>
         </div>
@@ -2491,7 +2506,38 @@ function initApp(){
       else if(analysisTab === "habits") renderHabitsView();
     }
 
-    function habitWeeklyPct(h, keys){
+    var radarRange = localStorage.getItem("habit_radar_range") || "week";
+    if(["day","week","month","all"].indexOf(radarRange) < 0) radarRange = "week";
+
+    function radarRangeKeys(range){
+      if(range === "day") return [selectedDate];
+      if(range === "week") return weekKeys();
+      if(range === "month"){
+        var monthKeys = [];
+        for(var mi = -29; mi <= 0; mi++) monthKeys.push(addDays(selectedDate, mi));
+        return monthKeys;
+      }
+      var seen = {};
+      var logs = state.logs || {};
+      for(var lk in logs){
+        if(!Object.prototype.hasOwnProperty.call(logs, lk)) continue;
+        if(lk <= selectedDate) seen[lk] = true;
+      }
+      var allKeys = Object.keys(seen).sort();
+      return allKeys.length ? allKeys : [selectedDate];
+    }
+
+    function radarRangeCaption(range, keyCount){
+      if(range === "day"){
+        var d = new Date(selectedDate + "T12:00:00");
+        return "Selected day · " + d.toLocaleDateString(undefined, {weekday:"short", month:"short", day:"numeric"});
+      }
+      if(range === "week") return "Last 7 days ending on selected date";
+      if(range === "month") return "Last 30 days · " + keyCount + " days";
+      return "All logged days · " + keyCount + " days";
+    }
+
+    function habitPeriodPct(h, keys){
       var total = 0, counted = 0;
       for(var i = 0; i < keys.length; i++){
         var sc = scoreHabit(h, logVal(keys[i], h.id));
@@ -2502,10 +2548,18 @@ function initApp(){
       return counted ? Math.round(total / counted * 100) : 0;
     }
 
-    function renderOverviewRadarChart(keys){
+    function syncRadarRangeUI(){
+      var btns = document.querySelectorAll("[data-radar-range]");
+      for(var i = 0; i < btns.length; i++){
+        btns[i].classList.toggle("active", btns[i].getAttribute("data-radar-range") === radarRange);
+      }
+    }
+
+    function renderOverviewRadarChart(keys, range){
       var el = document.getElementById("overviewRadarChart");
       var cap = document.getElementById("overviewRadarCaption");
       if(!el) return;
+      range = range || radarRange;
       var habits = state.habits;
       if(habits.length < 3){
         el.innerHTML = '<div class="chart-empty">Add at least 3 habits to see the balance chart.</div>';
@@ -2516,14 +2570,15 @@ function initApp(){
       var values = [];
       for(var hi = 0; hi < habits.length; hi++){
         labels.push(habits[hi].name);
-        values.push(habitWeeklyPct(habits[hi], keys));
+        values.push(habitPeriodPct(habits[hi], keys));
       }
       var w = 320, h = 260;
       var cx = w / 2, cy = h / 2 + 6;
       var R = Math.min(88, 36 + habits.length * 4);
       var n = labels.length;
       var rings = [25, 50, 75, 100];
-      var chunks = ['<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Weekly habit balance radar chart">'];
+      var rangeLabel = range === "day" ? "day" : range === "week" ? "week" : range === "month" ? "month" : "all time";
+      var chunks = ['<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Habit balance radar chart for '+rangeLabel+'">'];
       for(var ri = 0; ri < rings.length; ri++){
         var rr = (rings[ri] / 100) * R;
         var ringPts = [];
@@ -2556,12 +2611,13 @@ function initApp(){
       chunks = chunks.concat(labelEls);
       chunks.push("</svg>");
       el.innerHTML = chunks.join("");
-      if(cap) cap.textContent = "Each spoke is one habit · distance from center = this week\u2019s completion %";
+      if(cap) cap.textContent = radarRangeCaption(range, keys.length) + " · each spoke = one habit, distance = avg completion %";
     }
 
     function renderOverview(){
       var keys = weekKeys();
-      renderOverviewRadarChart(keys);
+      syncRadarRangeUI();
+      renderOverviewRadarChart(radarRangeKeys(radarRange), radarRange);
 
       var scores = [];
       for(var i=0; i<keys.length; i++) scores.push(dayScore(keys[i]));
@@ -2836,6 +2892,18 @@ function initApp(){
           renderAnalysis();
         };
       })(analysisTabBtns[atb]);
+    }
+
+    var radarRangeBtns = document.querySelectorAll("[data-radar-range]");
+    for(var rrb = 0; rrb < radarRangeBtns.length; rrb++){
+      (function(btn){
+        btn.onclick = function(){
+          radarRange = btn.getAttribute("data-radar-range");
+          try{localStorage.setItem("habit_radar_range", radarRange);}catch(e){}
+          syncRadarRangeUI();
+          renderOverviewRadarChart(radarRangeKeys(radarRange), radarRange);
+        };
+      })(radarRangeBtns[rrb]);
     }
 
     // ========== Notes for the day ==========
