@@ -145,8 +145,7 @@
     display:flex;align-items:center;gap:6px;flex-shrink:0;
   }
   .icon-tool-btn,
-  .theme-toggle-btn,
-  .view-toggle-btn{
+  .theme-toggle-btn{
     border:1px solid var(--line);background:var(--card);
     color:var(--text);border-radius:999px;padding:6px 8px;
     font-size:13px;font-weight:700;cursor:pointer;
@@ -154,10 +153,11 @@
     min-width:32px;height:32px;
   }
   .icon-tool-btn:hover,
-  .theme-toggle-btn:hover,
-  .view-toggle-btn:hover{background:var(--card2)}
+  .theme-toggle-btn:hover{background:var(--card2)}
   .theme-icon{display:inline-block}
-  .view-toggle-btn svg{display:block}
+  .user-bar-tools .menu-btn{
+    width:32px;height:32px;min-width:32px;padding:0;border-radius:50%;
+  }
 
   /* ============ MOBILE (default) ============ */
   .app{
@@ -1114,35 +1114,17 @@
   <div class="user-bar" id="userBar">
     <span class="user-name" id="userName"></span>
     <div class="user-bar-tools">
-      <button class="view-toggle-btn" id="viewToggleBtn" type="button" title="Switch to compact view" aria-label="Switch to compact view">
-        <svg class="view-icon-cards" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-          <rect x="2" y="2" width="5" height="5" rx="1.2"/>
-          <rect x="9" y="2" width="5" height="5" rx="1.2"/>
-          <rect x="2" y="9" width="5" height="5" rx="1.2"/>
-          <rect x="9" y="9" width="5" height="5" rx="1.2"/>
-        </svg>
-        <svg class="view-icon-compact" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" style="display:none">
-          <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <button class="theme-toggle-btn" id="themeToggleBtn" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">
-        <span class="theme-icon">🌙</span>
-      </button>
-      <button class="logout-btn" id="logoutBtn" type="button">Sign out</button>
-    </div>
-  </div>
-  <header>
-    <div class="header-left">
-      <div class="eyebrow">Mottazen</div>
-      <h1 id="mainHeading">Today</h1>
-    </div>
-    <div class="header-right">
       <div class="menu-wrap">
-        <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Menu">
+        <button class="icon-tool-btn menu-btn" id="menuBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Menu">
           <span class="menu-dots" aria-hidden="true"></span>
           <span class="sr-only">Menu</span>
         </button>
         <div class="menu-pop" id="menuPop" role="menu" aria-hidden="true">
+          <div class="menu-section">
+            <div class="menu-section-title">View</div>
+            <button class="menu-item" type="button" data-action="toggle-view" role="menuitem" id="viewModeMenuItem">Compact view</button>
+          </div>
+          <div class="menu-divider"></div>
           <div class="menu-section">
             <div class="menu-section-title">Export</div>
             <button class="menu-item" type="button" data-action="export-json" role="menuitem">As JSON</button>
@@ -1157,6 +1139,18 @@
           </div>
         </div>
       </div>
+      <button class="theme-toggle-btn" id="themeToggleBtn" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">
+        <span class="theme-icon">🌙</span>
+      </button>
+      <button class="logout-btn" id="logoutBtn" type="button">Sign out</button>
+    </div>
+  </div>
+  <header>
+    <div class="header-left">
+      <div class="eyebrow">Mottazen</div>
+      <h1 id="mainHeading">Today</h1>
+    </div>
+    <div class="header-right">
       <input type="file" id="importFile" accept=".json,.csv,application/json,text/csv" style="display:none" />
       <button class="today-pill" id="todayLabel" type="button" aria-haspopup="dialog" aria-label="Open date picker">Today</button>
     </div>
@@ -2088,13 +2082,9 @@ function initApp(){
     }
 
     function renderViews(){
-      var btn = document.getElementById("viewToggleBtn");
-      if(!btn) return;
-      var cards = viewMode === "cards";
-      btn.querySelector(".view-icon-cards").style.display = cards ? "" : "none";
-      btn.querySelector(".view-icon-compact").style.display = cards ? "none" : "";
-      btn.title = cards ? "Switch to compact view" : "Switch to cards view";
-      btn.setAttribute("aria-label", btn.title);
+      var item = document.getElementById("viewModeMenuItem");
+      if(!item) return;
+      item.textContent = viewMode === "cards" ? "Compact view" : "Cards view";
     }
 
     function streakBadgeHtml(h){
@@ -2764,12 +2754,6 @@ function initApp(){
       })(analysisTabBtns[atb]);
     }
 
-    document.getElementById("viewToggleBtn").onclick=function(){
-      viewMode = viewMode === "cards" ? "compact" : "cards";
-      try{localStorage.setItem("habit_log_view_mode",viewMode);}catch(e){}
-      render();
-    };
-
     // ========== Notes for the day ==========
     var notesArea = document.getElementById("notesArea");
     var notesSaved = document.getElementById("notesSaved");
@@ -3407,7 +3391,12 @@ function initApp(){
       if(!btn) return;
       var action = btn.getAttribute("data-action");
       closeMenu();
-      if(action === "export-json") exportJSON();
+      if(action === "toggle-view"){
+        viewMode = viewMode === "cards" ? "compact" : "cards";
+        try{localStorage.setItem("habit_log_view_mode",viewMode);}catch(e){}
+        render();
+      }
+      else if(action === "export-json") exportJSON();
       else if(action === "export-csv") exportCSV();
       else if(action === "export-stats") exportStats();
       else if(action === "import-json") triggerImport("json");
