@@ -1203,7 +1203,7 @@
       <div class="habit-list" id="habitList"></div>
       <div class="notes-card">
         <div class="notes-card-title">
-          <span>Notes for the day</span>
+          <span id="notesDayLabel">Notes for the day</span>
           <span class="notes-saved" id="notesSaved">Saved</span>
         </div>
         <textarea class="notes-textarea" id="notesArea" placeholder="What got in the way? What worked? Anything you want to remember about today."></textarea>
@@ -1563,6 +1563,8 @@ function initApp(){
 
     var selectedDate = key(new Date());
     var todayKey = key(new Date());
+    var notesEditingDate = selectedDate;
+    var notesDebounce = null;
     var viewMode = localStorage.getItem("habit_log_view_mode") || "cards";
     var editingHabitId = null;
 
@@ -1709,14 +1711,28 @@ function initApp(){
           }
         }
 
-        // Sync notes
+        // Sync notes (upsert non-empty, delete cleared)
         for(var nk in state.notes){
-          if(!state.notes.hasOwnProperty(nk) || !state.notes[nk]) continue;
+          if(!state.notes.hasOwnProperty(nk)) continue;
+          var noteBody = (state.notes[nk] || "").trim();
+          if(!noteBody){
+            await sb.from("notes").delete().eq("user_id", currentUser.id).eq("note_date", nk);
+            continue;
+          }
           await sb.from("notes").upsert({
             user_id: currentUser.id,
             note_date: nk,
             content: state.notes[nk]
           }, {onConflict: "user_id,note_date"});
+        }
+        var existingNotes = await sb.from("notes").select("note_date").eq("user_id", currentUser.id);
+        if(!existingNotes.error && existingNotes.data){
+          for(var en = 0; en < existingNotes.data.length; en++){
+            var nd = existingNotes.data[en].note_date;
+            if(!state.notes[nd] || !(state.notes[nd] || "").trim()){
+              await sb.from("notes").delete().eq("user_id", currentUser.id).eq("note_date", nd);
+            }
+          }
         }
 
         // Sync settings
@@ -2027,13 +2043,10 @@ function initApp(){
             dragSuppressClick = false;
             return;
           }
-          selectedDate=this.getAttribute("data-key");
+          changeSelectedDate(this.getAttribute("data-key"));
           var prev = strip.querySelector(".day.active");
           if(prev) prev.classList.remove("active");
           this.classList.add("active");
-          renderHero();
-          renderHabits();
-          renderAnalysis();
         };
         strip.appendChild(b);
       }
@@ -2714,13 +2727,12 @@ function initApp(){
           cell.setAttribute("title", new Date(k+"T12:00:00").toLocaleDateString(undefined,{day:"numeric",month:"short"}) + " — " + s + "%");
           (function(dateKey){
             cell.onclick = function(){
-              selectedDate = dateKey;
+              changeSelectedDate(dateKey);
               analysisTab = "overview";
               try { localStorage.setItem("habit_analysis_tab", analysisTab); } catch(_){}
-              // Switch to log tab to give immediate context
               try { localStorage.setItem("habit_active_tab","log"); } catch(_){}
               activeTab = "log";
-              render();
+              applyActiveTab();
               showToast("Jumped to " + pretty(dateKey));
             };
           })(k);
@@ -2906,33 +2918,68 @@ function initApp(){
       })(radarRangeBtns[rrb]);
     }
 
-    // ========== Notes for the day ==========
+    // ========== Notes for the day (one note per date key) ==========
     var notesArea = document.getElementById("notesArea");
     var notesSaved = document.getElementById("notesSaved");
-    var notesDebounce = null;
+    var notesDayLabel = document.getElementById("notesDayLabel");
 
-    function renderNotes(){
-      // Update the textarea value when switching days
-      var text = (state.notes && state.notes[selectedDate]) || "";
-      // Avoid clobbering active typing if it's the same value
-      if(document.activeElement !== notesArea){
-        notesArea.value = text;
+    function commitNoteForDate(dateKey, text){
+      state.notes = state.notes || {};
+      if((text || "").trim()){
+        state.notes[dateKey] = text;
+      } else {
+        delete state.notes[dateKey];
       }
     }
+
+    function flushPendingNotes(){
+      clearTimeout(notesDebounce);
+      notesDebounce = null;
+      if(!notesArea) return;
+      commitNoteForDate(notesEditingDate, notesArea.value);
+      save();
+    }
+
+    function changeSelectedDate(k){
+      if(!k || k === selectedDate) return;
+      flushPendingNotes();
+      selectedDate = k;
+      notesEditingDate = k;
+      renderHero();
+      renderHabits();
+      renderAnalysis();
+      renderNotes(true);
+    }
+
+    function renderNotes(force){
+      if(!notesArea) return;
+      notesEditingDate = selectedDate;
+      var text = (state.notes && state.notes[selectedDate]) || "";
+      if(force || document.activeElement !== notesArea){
+        notesArea.value = text;
+      }
+      if(notesDayLabel){
+        var d = new Date(selectedDate + "T12:00:00");
+        var dayLabel = selectedDate === todayKey
+          ? "today"
+          : d.toLocaleDateString(undefined, {weekday:"short", month:"short", day:"numeric"});
+        notesDayLabel.textContent = "Notes for " + dayLabel;
+      }
+    }
+
     notesArea.addEventListener("input", function(){
       var text = notesArea.value;
+      var dateKey = notesEditingDate;
       clearTimeout(notesDebounce);
       notesDebounce = setTimeout(function(){
-        state.notes = state.notes || {};
-        if(text){
-          state.notes[selectedDate] = text;
-        } else {
-          delete state.notes[selectedDate];
-        }
+        commitNoteForDate(dateKey, text);
         save();
         notesSaved.classList.add("show");
         setTimeout(function(){ notesSaved.classList.remove("show"); }, 900);
       }, 350);
+    });
+    notesArea.addEventListener("blur", function(){
+      flushPendingNotes();
     });
 
     // ========== Add / Edit habit modal ==========
@@ -3625,8 +3672,7 @@ function initApp(){
       btn.innerHTML = String(dayNum) + (hasLog ? '<span class="dot-mark"></span>' : '');
       btn.setAttribute("aria-label", new Date(k + "T12:00:00").toLocaleDateString(undefined, {weekday:"long",day:"numeric",month:"long",year:"numeric"}));
       btn.onclick = function(){
-        selectedDate = k;
-        // If the day strip exists in DOM, sync its active class and scroll to it
+        changeSelectedDate(k);
         var strip = document.getElementById("dateStrip");
         if(strip){
           var prev = strip.querySelector(".day.active");
@@ -3634,7 +3680,6 @@ function initApp(){
           var next = strip.querySelector('.day[data-key="' + k + '"]');
           if(next){
             next.classList.add("active");
-            // Scroll the strip so the chosen day is visible
             var scroller = document.getElementById("dateScroll");
             if(scroller){
               var left = next.offsetLeft - (scroller.clientWidth / 2) + (next.clientWidth / 2);
@@ -3642,9 +3687,6 @@ function initApp(){
             }
           }
         }
-        renderHero();
-        renderHabits();
-        renderAnalysis();
         closeCalendar();
       };
       calGrid.appendChild(btn);
@@ -3668,7 +3710,7 @@ function initApp(){
       renderCalendar();
     };
     document.getElementById("calToday").onclick = function(){
-      selectedDate = todayKey;
+      changeSelectedDate(todayKey);
       var strip = document.getElementById("dateStrip");
       if(strip){
         var prev = strip.querySelector(".day.active");
@@ -3683,9 +3725,6 @@ function initApp(){
           }
         }
       }
-      renderHero();
-      renderHabits();
-      renderAnalysis();
       closeCalendar();
     };
     document.getElementById("calClose").onclick = closeCalendar;
@@ -3741,6 +3780,10 @@ function initApp(){
         closeCalendar();
         closeMenu();
       }
+    });
+
+    window.addEventListener("beforeunload", function(){
+      flushPendingNotes();
     });
 
     render();
